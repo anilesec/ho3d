@@ -124,12 +124,46 @@ def mesh2open3dMesh2npy(mList, colorList, mesh_category = None):
     # return triangles with co-ordnates(#triangles x 3 (vertices) x 3 (xyz coordinate of each vertex))
     return o3dFacesList, o3dMeshList
 
-def mean_center_o3d_mesh(o3d_mesh, color=None):
+def mean_center_o3d_mesh(o3d_mesh_comb, o3d_mesh_hand, o3d_mesh_obj, color=None):
+    # hand mesh vertices mean
+    o3d_mesh_hand_mean_v = np.asarray(np.mean(o3d_mesh_hand.vertices, axis=0)).reshape((1, -1))
+    
+    # hand mesh vertices mean
+    o3d_mesh_obj_mean_v = np.asarray(np.mean(o3d_mesh_obj.vertices, axis=0)).reshape((1, -1))
+    # raw_input("enter for hand and obj  v mean")
+    print("o3d_mesh_hand_mean_v", o3d_mesh_hand_mean_v)
+    print("o3d_mesh_obj_mean_v", o3d_mesh_obj_mean_v)
+    
+    # hand mesh weight for weighted avg
+    print("np.asarray(o3d_mesh_hand.vertices).shape[0]", len(o3d_mesh_hand.vertices))
+    print("np.asarray(o3d_mesh_obj.vertices).shape[0]", len(o3d_mesh_obj.vertices))
+    o3d_mesh_hand_w = float(len(o3d_mesh_hand.vertices)) / float((len(o3d_mesh_hand.vertices) + len(o3d_mesh_obj.vertices)))
+    
+    # obj mesh weight for weighted avg
+    o3d_mesh_obj_w = float(len(o3d_mesh_obj.vertices)) / float((len(o3d_mesh_hand.vertices) + len(o3d_mesh_obj.vertices)))
+    
+    # raw_input("enter for weight")
+    print("o3d_mesh_hand_w", o3d_mesh_hand_w)
+    print("o3d_mesh_obj_w", o3d_mesh_obj_w)
+
+    # weighted average of combined mesh vertices 
+    # (this is equivalent to averaging the combined mesh vertices)
+    # not used!!(non-weighted average is used as we prefer center to middle instead of towards the mesh with more vertices)
+    weighted_vertices_mean = (o3d_mesh_hand_w *  o3d_mesh_hand_mean_v) + (o3d_mesh_obj_w * o3d_mesh_obj_mean_v)
+    # raw_input("enter for weighted_vertices_mean")
+    print("weighted_vertices_mean", weighted_vertices_mean)
     centered_mesh = open3d.geometry.TriangleMesh()
-    vertices_mean = np.asarray(np.mean(o3d_mesh.vertices, axis=0)).reshape((1, -1))
-    centered_mesh.vertices = open3d.utility.Vector3dVector(np.copy(np.subtract(np.asarray(o3d_mesh.vertices), vertices_mean)))  
-    centered_mesh.triangles = open3d.utility.Vector3iVector(np.copy(np.asarray(o3d_mesh.triangles)))
-    numVert = np.asarray(o3d_mesh.vertices).shape[0]
+    
+    # Non-weighted average
+    vertices_mean = (o3d_mesh_hand_mean_v + o3d_mesh_obj_mean_v) / 2.0
+    # raw_input("enter for non-weighted vertices_mean")
+    print("Non weighted_vertices_mean", vertices_mean)
+    # raw_input("wait and check")
+
+    # combined mesh mean centering using weighted avg mean
+    centered_mesh.vertices = open3d.utility.Vector3dVector(np.copy(np.subtract(np.asarray(o3d_mesh_comb.vertices), vertices_mean)))  
+    centered_mesh.triangles = open3d.utility.Vector3iVector(np.copy(np.asarray(o3d_mesh_comb.triangles)))
+    numVert = np.asarray(o3d_mesh_comb.vertices).shape[0]
 
     if color is 'red':
         centered_mesh.vertex_colors = open3d.utility.Vector3dVector(np.tile(np.array([[0.6, 0.2, 0.2]]), [numVert, 1]))
@@ -197,7 +231,7 @@ if __name__ == '__main__':
             # print(hand_obj_mesh_comb, o3d_hand_mesh[0], o3d_obj_mesh[0])
             # raw_input("enter for hand and obj combined mesh BEFORE mean centering")
             # open3d.visualization.draw_geometries([hand_obj_mesh_comb])
-            hand_obj_mesh_comb_centered = mean_center_o3d_mesh(hand_obj_mesh_comb, color='red')
+            hand_obj_mesh_comb_centered = mean_center_o3d_mesh(hand_obj_mesh_comb, o3d_hand_mesh[0], o3d_obj_mesh[0], color='red')
             print("centered mesh V mean:", np.mean(np.asarray(hand_obj_mesh_comb_centered.vertices)))
             # raw_input("enter for hand and obj combined mesh AFTER mean centering")
             # open3d.visualization.draw_geometries([hand_obj_mesh_comb_centered])
@@ -226,7 +260,7 @@ if __name__ == '__main__':
 
             if not os.path.exists(os.path.join(baseDir, seq, 'hand_obj_mesh_watertight')):
                 os.makedirs(os.path.join(baseDir, seq, 'hand_obj_mesh_watertight'))     
-        
+            
             # if not os.path.exists(os.path.join(baseDir, seq, 'mesh_watertight', 'hand')):
             #     os.makedirs(os.path.join(baseDir, seq, 'mesh_watertight', 'hand'))
 
